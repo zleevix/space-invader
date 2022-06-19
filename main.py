@@ -25,13 +25,35 @@ def player(x,y):
 
 enemyImg = pygame.image.load('images/enemy.png')
 enemyX = random.randint(0, 800)
-enemyY = random.randint(50,370)
+enemyY = random.randint(50,250)
 enemyX_change = 3
 enemyY_change = 40
 
 def enemy(x,y):
     screen.blit(enemyImg, (x, y))
 
+
+bulletImg = pygame.image.load('images/bullet.png')
+bulletX = 0
+bulletY = 480
+bulletX_change = 3
+bulletY_change = 5
+# Ready: Đạn của chúng ta ở trạng thái sẵn sàng được bắn khi và chỉ khi ta không còn nhìn thấy trên màn hình bất kỳ viên đạn nào nữa.
+# Fire: Đạn đang trong trạng thái di chuyển, ở trạng thái này phi thuyền không được bắn đạn.
+bullet_state = "ready"
+score = 0
+
+def fire_bullet(x,y):
+    global bullet_state
+    bullet_state = "fire" # khi đạn được bắn, ta thay đổi trạng thái của đạn thành "fire" - đang di chuyển
+    screen.blit(bulletImg, (x+16, y+10)) # việc cộng 16 vào x và cộng 10 vào y khiến cho viên đạn xuất hiện vào đúng mũi của phi phi thuyền
+
+def is_collistion(enemyX, enemyY, bulletX, bulletY):
+    distance = ((enemyX-bulletX)**2 +(enemyY-bulletY)**2)**0.5
+    if distance < 27:
+        return True
+    else:
+        return False
 # Flag check game running: like threading python
 running = True
 while running:
@@ -60,21 +82,25 @@ while running:
                 # print('Phím mũi tên phải đang được nhấn')
                 playerX_change = 3.0
                 # playerX += 3
-            if event.key == pygame.K_UP:  # Kiểm tra xem phím mũi tên trái có đang được nhấn không
-                # print('Phím mũi tên trái đang được nhấn')
-                playerY_change = -3.0
-                # playerX -= 3
-            if event.key == pygame.K_DOWN:  # Kiểm tra xem phím mũi tên phải có đang được nhấn không
-                # print('Phím mũi tên phải đang được nhấn')
-                playerY_change = 3.0
-                # playerX += 3
+            # if event.key == pygame.K_UP:  # Kiểm tra xem phím mũi tên trái có đang được nhấn không
+            #     # print('Phím mũi tên trái đang được nhấn')
+            #     playerY_change = -3.0
+            #     # playerX -= 3
+            # if event.key == pygame.K_DOWN:  # Kiểm tra xem phím mũi tên phải có đang được nhấn không
+            #     # print('Phím mũi tên phải đang được nhấn')
+            #     playerY_change = 3.0
+            #     # playerX += 3
+            if event.key == pygame.K_SPACE:
+                if bullet_state == "ready":
+                    bulletX = playerX  # Gán tọa độ X phi thuyền vào tọa độ X của viên đạn
+                fire_bullet(bulletX, bulletY)  # thay đổi
         if event.type == pygame.KEYUP:  # Nếu phím được ngừng nhấn
             if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:  # Phím mũi tên trái hoặc phải được nhấc lên
                 # print("Ngừng nhấn tổ hợp phím")
                 playerX_change = 0
-            if event.key == pygame.K_UP or event.key == pygame.K_DOWN:  # Phím mũi tên trái hoặc phải được nhấc lên
-                # print("Ngừng nhấn tổ hợp phím")
-                playerY_change = 0
+            # if event.key == pygame.K_UP or event.key == pygame.K_DOWN:  # Phím mũi tên trái hoặc phải được nhấc lên
+            #     # print("Ngừng nhấn tổ hợp phím")
+            #     playerY_change = 0
     playerX += playerX_change
     playerY += playerY_change
     if playerX <= 0:
@@ -90,7 +116,20 @@ while running:
         enemyX_change = -3
         enemyY += enemyY_change
         # enemyY += enemyY_change
-    
+    if bulletY <= 0:
+        bulletY = 480  # ngay khi viên đạn đi đến điểm cuối trên cùng của màn hình game thì viên đạn sẽ quay về điểm 480px
+        bullet_state = "ready"  # Và khi viên đạn đi đến điểm cuối màn hình bên trên thì trạng thái của viên đạn sẽ từ "fire" (đang di chuyển) thành "ready" (sẵn sàng)
+    if bullet_state is "fire":
+        fire_bullet(bulletX, bulletY)
+        bulletY -= bulletY_change
+    collison = is_collistion(enemyX, enemyY, bulletX, bulletY)
+    if collison:
+        bullety=480
+        bullet_state = "ready"
+        score += 1
+        print(score)
+        enemyX = random.randint(0, 800)
+        enemyY = random.randint(50,150)
     player(playerX, playerY)
     enemy(enemyX, enemyY)
     # Update while running
