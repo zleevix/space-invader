@@ -1,5 +1,6 @@
 import pygame
 import random
+from pygame import mixer
 
 # Initalize the pygame
 pygame.init()
@@ -13,6 +14,8 @@ icon = pygame.image.load("images/ufo.png")
 pygame.display.set_icon(icon)
 
 background = pygame.image.load("images/background.png")
+mixer.music.load('musics/background.wav')
+mixer.music.play(-1)
 
 #Player
 playerImg = pygame.image.load('images/player.png')  # thêm hình ảnh tàu chiến
@@ -23,14 +26,26 @@ playerY_change = 0
 def player(x,y):
     screen.blit(playerImg, (x, y))
 
-enemyImg = pygame.image.load('images/enemy.png')
-enemyX = random.randint(0, 800)
-enemyY = random.randint(50,250)
-enemyX_change = 3
-enemyY_change = 40
+# Enemy
+enemyImg = []
+enemyX = []
+enemyY = []
+enemyX_change = []
+enemyY_change = []
+nof_enemy = 10
 
-def enemy(x,y):
-    screen.blit(enemyImg, (x, y))
+for i in range(nof_enemy):
+    # image = pygame.image.load(f'images/enemy{random.randint(1,6)}.png')
+    # image = pygame.transform.scale(image, (64,64))
+    image = pygame.image.load('images/enemy.png')
+    enemyImg.append(image)
+    enemyX.append(random.randint(0, 800))
+    enemyY.append(random.randint(50,250))
+    enemyX_change.append(1)
+    enemyY_change.append(20)
+
+def enemy(x,y,i):
+    screen.blit(enemyImg[i], (x, y))
 
 
 bulletImg = pygame.image.load('images/bullet.png')
@@ -41,7 +56,22 @@ bulletY_change = 5
 # Ready: Đạn của chúng ta ở trạng thái sẵn sàng được bắn khi và chỉ khi ta không còn nhìn thấy trên màn hình bất kỳ viên đạn nào nữa.
 # Fire: Đạn đang trong trạng thái di chuyển, ở trạng thái này phi thuyền không được bắn đạn.
 bullet_state = "ready"
-score = 0
+
+# Score 
+score_value = 0
+font = pygame.font.Font('freesansbold.ttf', 32)
+textX = 10
+textY = 10
+def show_score(x,y):
+    score = font.render("Score: " + str(score_value), True, (255,255,255))
+    screen.blit(score,(x,y))
+
+# Game over text
+over_font = pygame.font.Font('freesansbold.ttf', 64)
+
+def game_over_text():
+    over_text = over_font.render("GAME OVER: " + str(score_value), True, (255,255,255))
+    screen.blit(over_text,(200,250))
 
 def fire_bullet(x,y):
     global bullet_state
@@ -56,6 +86,7 @@ def is_collistion(enemyX, enemyY, bulletX, bulletY):
         return False
 # Flag check game running: like threading python
 running = True
+
 while running:
     screen.fill((0,0,0))
     screen.blit(background, (0, 0))
@@ -92,8 +123,10 @@ while running:
             #     # playerX += 3
             if event.key == pygame.K_SPACE:
                 if bullet_state == "ready":
+                    bullet_soud = mixer.Sound('musics/laser.wav')
+                    bullet_soud.play()
                     bulletX = playerX  # Gán tọa độ X phi thuyền vào tọa độ X của viên đạn
-                fire_bullet(bulletX, bulletY)  # thay đổi
+                    fire_bullet(bulletX, bulletY)  # thay đổi
         if event.type == pygame.KEYUP:  # Nếu phím được ngừng nhấn
             if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:  # Phím mũi tên trái hoặc phải được nhấc lên
                 # print("Ngừng nhấn tổ hợp phím")
@@ -108,13 +141,34 @@ while running:
     elif playerX >= 736:  # 800-64(chiều rộng của phi thuyền)
         playerX = 736
         enemyX += enemyX_change
-    enemyX += enemyX_change
-    if enemyX <= 0:
-        enemyX_change = 3
-        enemyY += enemyY_change
-    elif enemyX >= 736:
-        enemyX_change = -3
-        enemyY += enemyY_change
+    # Enemy move
+    for i in range(nof_enemy):
+        if enemyY[i] > 440:
+            for j in range(nof_enemy):
+                enemyY[j] = 2000
+            # print(enemyY)
+            game_over_text()
+
+            break
+        enemyX[i] += enemyX_change[i]
+        if enemyX[i] <= 0:
+            enemyX_change[i] = 1
+            enemyY[i] += enemyY_change[i]
+        elif enemyX[i] >= 736:
+            enemyX_change[i] = -1
+            enemyY[i] += enemyY_change[i]
+        collison = is_collistion(enemyX[i], enemyY[i], bulletX, bulletY)
+        if collison:
+            collison_soud = mixer.Sound('musics/explosion.wav')
+            collison_soud.play()
+            bulletY =480 # khi vụ va chạm xảy ra thì vị trí của viên đạn sẽ quay về ban đẩu
+            bullet_state = "ready" # trạng thái của đạn sẽ trở về "ready" để sẵn sàng cho lần bắn tiếp theo
+            score_value += 1  # cộng 1 điểm khi va chạm xảy ra
+            # print(score_value)
+            enemyX[i] = random.randint(0, 800)
+            enemyY[i] = random.randint(50,150)
+        
+        enemy(enemyX[i], enemyY[i],i)
         # enemyY += enemyY_change
     if bulletY <= 0:
         bulletY = 480  # ngay khi viên đạn đi đến điểm cuối trên cùng của màn hình game thì viên đạn sẽ quay về điểm 480px
@@ -122,15 +176,10 @@ while running:
     if bullet_state is "fire":
         fire_bullet(bulletX, bulletY)
         bulletY -= bulletY_change
-    collison = is_collistion(enemyX, enemyY, bulletX, bulletY)
-    if collison:
-        bullety=480
-        bullet_state = "ready"
-        score += 1
-        print(score)
-        enemyX = random.randint(0, 800)
-        enemyY = random.randint(50,150)
+
+     
     player(playerX, playerY)
-    enemy(enemyX, enemyY)
-    # Update while running
+    show_score(textX, textY)
+    # enemy(enemyX, enemyY)
+     # Update while running
     pygame.display.update()
